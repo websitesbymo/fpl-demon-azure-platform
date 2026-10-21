@@ -1,0 +1,72 @@
+# Terraform CI/CD for the FPL Demon Azure platform.
+# Every push to main: validate and plan. Apply runs only after a person approves the "production" environment.
+# Authentication: workload identity federation (OIDC). No secrets are stored anywhere.
+
+trigger:
+  branches:
+    include: [main]
+
+pool:
+  name: Default # self-hosted agent (free Microsoft-hosted agents need an approval request for new organisations)
+
+variables:
+  serviceConnection: azure-fpldemon-lab
+  # Set as pipeline variables (Pipelines > Edit > Variables), never in code:
+  # ALERT_EMAIL, READER_OBJECT_ID, PIPELINE_OBJECT_ID, TFSTATE_RG, TFSTATE_ACCOUNT
+
+stages:
+  - stage: Plan
+    jobs:
+      - job: plan
+        steps:
+          - task: AzureCLI@2
+            displayName: terraform init, validate, plan
+            inputs:
+              azureSubscription: $(serviceConnection)
+              scriptType: ps # Windows PowerShell on the self-hosted agent
+              scriptLocation: inlineScript
+              addSpnToEnvironment: true
+              inlineScript: |
+                $env:ARM_USE_OIDC = "true"
+                $env:ARM_OIDC_TOKEN = $env:idToken
+                $env:ARM_CLIENT_ID = $env:servicePrincipalId
+                $env:ARM_TENANT_ID = $env:tenantId
+                $env:ARM_SUBSCRIPTION_ID = (az account show --query id -o tsv)
+                terraform init -input=false -backend-config="resource_group_name=$(TFSTATE_RG)" -backend-config="storage_account_name=$(TFSTATE_ACCOUNT)" -backend-config="container_name=tfstate" -backend-config="key=platform-lab.tfstate"
+                terraform fmt -check
+                terraform validate
+                terraform plan -input=false -var "alert_email=$(ALERT_EMAIL)" -var "reader_object_id=$(READER_OBJECT_ID)" -var "pipeline_object_id=$(PIPELINE_OBJECT_ID)" -out tfplan
+          - publish: tfplan
+            artifact: tfplan
+
+  - stage: Apply
+    dependsOn: Plan
+    condition: succeeded()
+    jobs:
+      - deployment: apply
+        environment: production # add an Approval check on this environment so a person signs off every change
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - download: current
+                  artifact: tfplan
+                - script: python -m checkov.main -d . --framework terraform --compact --quiet
+                  displayName: Security scan (Checkov) - fails the run on any unskipped finding
+
+                - task: AzureCLI@2
+                  displayName: terraform apply (reviewed plan)
+                  inputs:
+                    azureSubscription: $(serviceConnection)
+                    scriptType: ps # Windows PowerShell on the self-hosted agent
+                    scriptLocation: inlineScript
+                    addSpnToEnvironment: true
+                    inlineScript: |
+                      $env:ARM_USE_OIDC = "true"
+                      $env:ARM_OIDC_TOKEN = $env:idToken
+                      $env:ARM_CLIENT_ID = $env:servicePrincipalId
+                      $env:ARM_TENANT_ID = $env:tenantId
+                      $env:ARM_SUBSCRIPTION_ID = (az account show --query id -o tsv)
+                      terraform init -input=false -backend-config="resource_group_name=$(TFSTATE_RG)" -backend-config="storage_account_name=$(TFSTATE_ACCOUNT)" -backend-config="container_name=tfstate" -backend-config="key=platform-lab.tfstate"
+                      terraform apply -input=false "$(Pipeline.Workspace)/tfplan/tfplan"

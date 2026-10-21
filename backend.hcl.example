@@ -1,0 +1,4 @@
+﻿resource_group_name  = "rg-tfstate-uks"
+storage_account_name = "sttfstateXXXXX"
+container_name       = "tfstate"
+key                  = "platform-lab.tfstate"
