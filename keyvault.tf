@@ -1,8 +1,8 @@
 resource "azurerm_key_vault" "lab" {
-  #checkov:skip=CKV_AZURE_110:Lab vault must be deletable; purge protection on in production
+  #checkov:skip=CKV_AZURE_110:Purge protection disabled to allow environment teardown; enable for regulated data
   #checkov:skip=CKV_AZURE_42:Same as above; soft delete is on (7 days)
-  #checkov:skip=CKV_AZURE_189:No VNet in lab; access controlled by RBAC
-  #checkov:skip=CKV_AZURE_109:No VNet in lab; firewall rules planned with private endpoints
+  #checkov:skip=CKV_AZURE_189:No virtual network in this deployment; access controlled by RBAC
+  #checkov:skip=CKV_AZURE_109:No virtual network in this deployment; firewall rules planned with private endpoints
   #checkov:skip=CKV2_AZURE_32:Private endpoints need a VNet, planned for a later stage
 
   name                       = "kv-fpldemon-${random_string.suffix.result}"

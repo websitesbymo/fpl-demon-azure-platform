@@ -1,5 +1,5 @@
-# Milestone 2: run FPL Demon's Official Core data job on Azure, side by side with Hetzner (shadow mode).
-# It writes only to this lab's storage (container "shadow-runs"), never to production.
+# run FPL Demon's Official Core data job on Azure, side by side with Hetzner (shadow mode).
+# During parallel running it writes to its own container ("shadow-runs"), separate from the existing pipeline.
 
 # Logs from every job run.
 resource "azurerm_log_analytics_workspace" "lab" {
@@ -19,7 +19,7 @@ resource "azurerm_container_registry" "lab" {
   #checkov:skip=CKV_AZURE_139:Public endpoint needed by Container Apps without a VNet; admin login disabled
   #checkov:skip=CKV_AZURE_163:Image scanning requires Premium tier; Basic chosen for cost
   #checkov:skip=CKV_AZURE_164:Content trust requires Premium tier
-  #checkov:skip=CKV_AZURE_165:Geo-replication requires Premium tier; single-region lab
+  #checkov:skip=CKV_AZURE_165:Geo-replication requires Premium tier; single-region deployment
   #checkov:skip=CKV_AZURE_166:Quarantine requires Premium tier
   #checkov:skip=CKV_AZURE_167:Retention policy requires Premium tier
   #checkov:skip=CKV_AZURE_233:Zone redundancy requires Premium tier

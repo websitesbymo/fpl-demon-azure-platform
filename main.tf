@@ -1,5 +1,5 @@
-# FPL Demon on Azure - platform lab.
-# Milestone 1: a cost guardrail, a resource group and a storage account, all in UK South.
+# FPL Demon Azure platform.
+# a cost guardrail, a resource group and a storage account, all in UK South.
 
 terraform {
   required_version = ">= 1.6"
@@ -56,9 +56,9 @@ resource "azurerm_resource_group" "lab" {
 
 # Storage for the FPL data files (the Azure version of the published JSON).
 resource "azurerm_storage_account" "data" {
-  #checkov:skip=CKV_AZURE_59:Lab has no virtual network; access is Entra ID + RBAC only (shared keys disabled)
+  #checkov:skip=CKV_AZURE_59:No virtual network in this deployment; access is Entra ID + RBAC only (shared keys disabled)
   #checkov:skip=CKV2_AZURE_33:Private endpoints need a VNet, planned for a later stage
-  #checkov:skip=CKV_AZURE_206:Locally redundant storage is enough for lab data
+  #checkov:skip=CKV_AZURE_206:Locally redundant storage meets the recovery requirement for this data
   #checkov:skip=CKV2_AZURE_1:Microsoft-managed encryption is acceptable for non-sensitive data
   #checkov:skip=CKV_AZURE_33:Queue service not used
 

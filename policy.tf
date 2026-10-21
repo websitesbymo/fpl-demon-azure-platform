@@ -1,4 +1,4 @@
-# Milestone 3: governance guardrails with Azure Policy (built-in definitions), assigned to the lab resource group.
+# governance guardrails with Azure Policy (built-in definitions), assigned to the platform resource group.
 
 # Built-in "Allowed locations": anything created outside the UK is denied.
 resource "azurerm_resource_group_policy_assignment" "uk_only" {

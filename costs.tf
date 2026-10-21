@@ -1,12 +1,12 @@
 # Cost guardrails: a budget per resource group, alerts before overspend, and anomaly detection.
 
 variable "lab_monthly_budget" {
-  description = "Monthly budget for the lab resource group, in the billing currency."
+  description = "Monthly budget for the platform resource group, in the billing currency."
   type        = number
   default     = 5
 }
 
-# A budget just for the lab resource group (at work: one per team or project).
+# A budget just for the platform resource group (one per team or project).
 resource "azurerm_consumption_budget_resource_group" "lab" {
   name              = "budget-rg-fpldemon-lab"
   resource_group_id = azurerm_resource_group.lab.id
