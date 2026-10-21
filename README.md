@@ -43,14 +43,14 @@ flowchart LR
 | Area | Implementation |
 |---|---|
 | Infrastructure as code | Terraform (azurerm 4.x); remote state in Azure Storage with Entra ID authentication |
-| Delivery | Azure DevOps YAML pipeline: security scan, validate, plan, apply of the reviewed plan artefact |
+| Delivery | Azure DevOps YAML pipeline: security scan, validate, plan, manual approval, apply of the reviewed plan artefact. Branch policy on `main` requires a pull request with a passing scan and plan; pull requests never apply |
 | Secretless authentication | Workload identity federation (OIDC) for the pipeline; user-assigned managed identity for the workload; registry admin user and storage shared keys disabled |
 | Least privilege | Workload limited to image pull, write access to a single container and read-only secrets; pipeline administrative rights scoped to the platform resource group and management group |
 | Governance | Azure Policy as code at management-group and resource-group scope: allowed locations (UK) and mandatory `project` tag |
 | Security scanning | Checkov gate fails the build on misconfiguration; accepted risks are suppressed in code with documented justification |
 | Cost management | Subscription and resource-group budgets with actual and forecast thresholds, cost anomaly alerts, cost-allocation tagging |
 | Networking | Virtual network with NSG-protected private endpoint subnet; Key Vault private endpoint with `privatelink` private DNS zone, feature-flagged to control cost |
-| Observability | Job execution history and console logs in Log Analytics |
+| Observability | Job execution history and console logs in Log Analytics; Key Vault audit events and blob read/write/delete logs via diagnostic settings |
 
 ## Repository structure
 
@@ -62,6 +62,7 @@ flowchart LR
 | `policy.tf` | Resource-group policy assignments |
 | `managementgroup.tf` | Management group, subscription placement, management-group policy, pipeline role assignments |
 | `network.tf` | Virtual network, subnet, NSG; Key Vault private endpoint and private DNS zone (`enable_private_networking`) |
+| `diagnostics.tf` | Diagnostic settings sending Key Vault and blob storage audit logs to Log Analytics |
 | `costs.tf` | Resource-group budget, forecast alerting, cost anomaly alert |
 | `backend.tf` | Remote state backend (configuration supplied at init) |
 | `azure-pipelines.yml` | CI/CD pipeline |

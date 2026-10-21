@@ -1,6 +1,7 @@
 # Terraform CI/CD for the FPL Demon Azure platform.
-# Every push to main: validate and plan. Apply runs only after a person approves the "production" environment.
 # Authentication: workload identity federation (OIDC). No secrets are stored anywhere.
+# Pull requests (required by branch policy on main): security scan and plan only.
+# Merges to main: scan, plan, then apply after a person approves the "production" environment.
 
 trigger:
   branches:
@@ -19,6 +20,8 @@ stages:
     jobs:
       - job: plan
         steps:
+          - script: python -m checkov.main -d . --framework terraform --compact --quiet
+            displayName: Security scan (Checkov) - fails the run on any unskipped finding
           - task: AzureCLI@2
             displayName: terraform init, validate, plan
             inputs:
@@ -41,7 +44,7 @@ stages:
 
   - stage: Apply
     dependsOn: Plan
-    condition: succeeded()
+    condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
     jobs:
       - deployment: apply
         environment: production # add an Approval check on this environment so a person signs off every change
@@ -52,9 +55,6 @@ stages:
                 - checkout: self
                 - download: current
                   artifact: tfplan
-                - script: python -m checkov.main -d . --framework terraform --compact --quiet
-                  displayName: Security scan (Checkov) - fails the run on any unskipped finding
-
                 - task: AzureCLI@2
                   displayName: terraform apply (reviewed plan)
                   inputs:
