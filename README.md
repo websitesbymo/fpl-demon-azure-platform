@@ -25,6 +25,7 @@ flowchart LR
         st[Storage, Entra ID only]
         kv[Key Vault, RBAC]
         log[Log Analytics]
+        vnet[VNet + NSG: private endpoint subnet]
       end
     end
   end
@@ -33,6 +34,7 @@ flowchart LR
   job -->|Blob Data Contributor, single container| st
   job -->|Secrets User| kv
   job --> log
+  vnet -.->|private endpoint, feature flag| kv
   job -->|fetch| api[(Upstream API)]
 ```
 
@@ -47,6 +49,7 @@ flowchart LR
 | Governance | Azure Policy as code at management-group and resource-group scope: allowed locations (UK) and mandatory `project` tag |
 | Security scanning | Checkov gate fails the build on misconfiguration; accepted risks are suppressed in code with documented justification |
 | Cost management | Subscription and resource-group budgets with actual and forecast thresholds, cost anomaly alerts, cost-allocation tagging |
+| Networking | Virtual network with NSG-protected private endpoint subnet; Key Vault private endpoint with `privatelink` private DNS zone, feature-flagged to control cost |
 | Observability | Job execution history and console logs in Log Analytics |
 
 ## Repository structure
@@ -58,6 +61,7 @@ flowchart LR
 | `keyvault.tf` | Key Vault with RBAC authorisation and scoped role assignments |
 | `policy.tf` | Resource-group policy assignments |
 | `managementgroup.tf` | Management group, subscription placement, management-group policy, pipeline role assignments |
+| `network.tf` | Virtual network, subnet, NSG; Key Vault private endpoint and private DNS zone (`enable_private_networking`) |
 | `costs.tf` | Resource-group budget, forecast alerting, cost anomaly alert |
 | `backend.tf` | Remote state backend (configuration supplied at init) |
 | `azure-pipelines.yml` | CI/CD pipeline |
@@ -71,6 +75,14 @@ flowchart LR
 4. Build the workload image and push it to the registry (`docker build`, `az acr login`, `docker push`).
 5. In Azure DevOps, create a workload identity federation service connection and define the pipeline variables
    listed at the top of `azure-pipelines.yml`.
+
+## Verification
+
+- **Private endpoint:** with `enable_private_networking = true`, the vault's private DNS record resolves to an
+  address in the endpoint subnet (10.20.1.0/24) and the connection is auto-approved.
+- **Policy:** deployments outside UK regions and resources without the `project` tag are denied at both
+  management-group and resource-group scope.
+- **Security scan:** Checkov runs on every pipeline run; any new failed check stops the build.
 
 ## Design decisions
 
@@ -86,3 +98,5 @@ flowchart LR
   before cut-over.
 - **Defence in depth.** Checkov blocks misconfigurations before deployment; Azure Policy enforces the same
   standards on anything created outside the pipeline.
+- **Cost-aware features.** Paid components such as private endpoints sit behind feature flags so they can be
+  enabled per environment rather than running permanently.
